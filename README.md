@@ -130,7 +130,7 @@ The argument values will be as follows:
 
 These arguments are strictly for your own use in setting up models.
 
-Your models function should (may) callback with a value that will be passed to your routes for use in your application logic. A Mongoose example:
+Your models function should (may) return a value that will be passed to your routes for use in your application logic. A Mongoose example:
 
 ```javascript
 // models.js
