@@ -19,5 +19,9 @@
 		"nib": "~1.0.1",
 		"connect-coffee-script": "~0.1.6"
 	},
-	"main": "./index.js"
+	"main": "./index.js",
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/bchociej/platform-ng.git"
+	}
 }
