@@ -1,0 +1,23 @@
+{
+	"name": "platform-ng",
+	"description": "A silly thing",
+	"version": "0.0.1-SNAPSHOT",
+	"author": {
+		"name": "Ben Chociej",
+		"email": "me@benchociej.com"
+	},
+	"dependencies": {
+		"express": "3.x",
+		"coffee-script": "~1.6.3",
+		"extend": "~1.2.1",
+		"thus": "~1.0.0",
+		"async": "~0.2.9",
+		"express-route-printer": "~1.0.1"
+	},
+	"optionalDependencies": {
+		"stylus": "~0.38.0",
+		"nib": "~1.0.1",
+		"connect-coffee-script": "~0.1.6"
+	},
+	"main": "./index.js"
+}
