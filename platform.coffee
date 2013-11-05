@@ -1,10 +1,11 @@
-express  = require 'express'
-extend   = require 'extend'
-thus     = require 'thus'
-async    = require 'async'
-path     = require 'path'
-fs       = require 'fs'
-rtprint  = require 'express-route-printer'
+rtprint = require 'express-route-printer'
+winston = require 'winston'
+express = require 'express'
+extend  = require 'extend'
+thus    = require 'thus'
+async   = require 'async'
+path    = require 'path'
+fs      = require 'fs'
 
 ###
 # The following modules might be included depending on configuration:
@@ -13,51 +14,63 @@ require 'nib'
 require 'connect-coffee-script'
 ###
 
-module.exports = (args...) ->
-	new Platform args
+###
+TODOs
 
-maybe_require = (what) ->
+-> Instead of require()ing JSON, it should be read and JSON.parse()d
+-> Models and routes should be allowed to return their stuff asynchronously
+###
+
+module.exports = (args...) ->
+	new Platform args...
+
+maybe_require = (wd, what) ->
 	if typeof what is 'object'
 		what
 	else
-		require what
-
-hidden_files = []
+		require path.resolve(wd, what)
 
 class Platform
-	constructor: (cfg) ->
-		@config = extend true, {}, require('./defaults.json'), maybe_require(cfg)
-		@logs = path.join(__dirname, './.logs/')
-		@routes = () -> undefined
-		@models = () -> undefined
-		@
+	platform = undefined
+	ctx = {}
 
-	routes: (rt) ->
-		maybe_routes = maybe_require rts
-		@routes = maybe_routes if typeof maybe_routes is 'function'
-		@
+	constructor: (@wd) ->
+		platform = @
+		ctx.cfg = require './defaults.json'
+		ctx.logs = path.join @wd, './logs/'
+		ctx.routes = () -> undefined
+		ctx.models = () -> undefined
 
-	models: (mdl) ->
-		maybe_models = maybe_require mdl
-		@models = maybe_models if typeof maybe_models is 'function'
-		@
+	config: (c) ->
+		ctx.cfg = extend true, {}, ctx.cfg, maybe_require(@wd, c)
+		platform
 
-	sources: (src) ->
-		@sources = path.resolve src
-		@
+	route: (rts) ->
+		maybe_routes = maybe_require @wd, rts
+		ctx.routes = maybe_routes if typeof maybe_routes is 'function'
+		platform
 
-	views: (v) ->
-		@views = path.resolve v
-		@
+	model: (mdl) ->
+		maybe_models = maybe_require @wd, mdl
+		ctx.models = maybe_models if typeof maybe_models is 'function'
+		platform
 
-	logs: (ld) ->
-		@logs = path.resolve ld
-		@
+	source: (src) ->
+		ctx.sources = path.resolve @wd, src
+		platform
+
+	view: (v) ->
+		ctx.views = path.resolve @wd, v
+		platform
+
+	log: (ld) ->
+		ctx.logs = path.resolve @wd, ld
+		platform
 
 	serve: (srv) ->
-		cfg = @config
-		platform = @
-		serve_dir = srv ? path.join(__dirname, './.serve/')
+		cfg = ctx.cfg
+		serve_dir = srv ? path.join(@wd, './.serve/')
+		hidden_files = []
 
 		unless /^[a-zA-Z0-9\-\.]+$/.test cfg.app.name
 			throw new Error "Illegal app name: #{cfg.app.name}"
@@ -65,7 +78,7 @@ class Platform
 		port = process.env.PORT ? cfg.server.port
 		node_env = process.env.NODE_ENV ? cfg.app.env
 
-		async.each [platform.logs, s], fs.mkdir, ->
+		async.each [ctx.logs, serve_dir], fs.mkdir, ->
 			if node_env isnt 'production'
 				node_env = 'development'
 
@@ -73,7 +86,7 @@ class Platform
 				@set 'env', node_env
 				@set 'trust proxy', cfg.server.behind_proxy
 				@set 'port', port
-				@set 'views', path.join(__dirname, platform.views) if platform.views?
+				@set 'views', ctx.views if ctx.views?
 				@set k, v for k, v in cfg.express unless k in ['env', 'views', 'trust proxy']
 
 				@use express.compress() if cfg.compress
@@ -81,7 +94,7 @@ class Platform
 				@use express.favicon(cfg.app.favicon) if cfg.app.favicon?
 
 				winston.add winston.transports.File,
-					filename: path.join(platform.logs, 'app.log')
+					filename: path.join(ctx.logs, 'app.log')
 
 				@configure 'development', ->
 					@use express.logger('dev')
@@ -92,7 +105,7 @@ class Platform
 
 				@use express.logger
 					format: 'short'
-					stream: fs.createWriteStream path.join(platform.logs, 'express.log')
+					stream: fs.createWriteStream path.join(ctx.logs, 'express.log')
 
 				@use express.bodyParser() if cfg.server.body_parser
 				@use express.methodOverride() if cfg.server.method_override
@@ -110,13 +123,13 @@ class Platform
 				switch cfg.express['view engine']
 					when 'jade' then hidden_files.push 'jade'
 
-				if platform.sources?
+				if ctx.sources?
 					if cfg.languages?.coffeescript
 						hidden_files.push 'coffee'
 						coffeemw = require 'connect-coffee-script'
 
 						@use coffeemw
-							src: platform.sources
+							src: ctx.sources
 							dest: serve_dir
 							sourceMap: cfg.compile?.expose_sources
 
@@ -125,7 +138,7 @@ class Platform
 						stylus = require 'stylus'
 
 						@use stylus.middleware
-							src: platform.sources
+							src: ctx.sources
 							dest: serve_dir
 							compile: (str, path, fn) ->
 								s = stylus(str)
@@ -143,17 +156,15 @@ class Platform
 						else
 							next()
 
-				@use express.static platform.sources
+				@use express.static ctx.sources
 				@use express.static serve_dir
 
-				# TODO: let models and routes define their stuff using callbacks
-				# instead of synchronous calls
-				compiled_models = platform.models cfg, winston, node_env
-				compiled_routes = platform.routes @, compiled_models, cfg, winston, node_env
+				compiled_models = ctx.models cfg, winston, node_env
+				compiled_routes = ctx.routes @, compiled_models, cfg, winston, node_env
 
 				rtprint @, winston
 
 				@listen port
 
-				winston.info "#{name} running"
+				winston.info "#{cfg.app.name} running"
 				winston.info "ExpressJS listening on :#{port}"

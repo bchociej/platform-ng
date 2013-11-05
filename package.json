@@ -1,7 +1,8 @@
 {
 	"name": "platform-ng",
-	"description": "A silly thing",
-	"version": "0.0.1-SNAPSHOT",
+	"description": "A quick-configuring ExpressJS webapp platform",
+	"version": "0.0.1",
+	"private": true,
 	"author": {
 		"name": "Ben Chociej",
 		"email": "me@benchociej.com"
@@ -12,7 +13,8 @@
 		"extend": "~1.2.1",
 		"thus": "~1.0.0",
 		"async": "~0.2.9",
-		"express-route-printer": "~1.0.1"
+		"express-route-printer": "~1.0.1",
+		"winston": "~0.7.2"
 	},
 	"optionalDependencies": {
 		"stylus": "~0.38.0",
