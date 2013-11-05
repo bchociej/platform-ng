@@ -20,6 +20,8 @@ TODOs
 
 -> Instead of require()ing JSON, it should be read and JSON.parse()d
 -> Models and routes should be allowed to return their stuff asynchronously
+-> Find out why 'view engine' isn't getting set ('no default engine and no extension specified' for res.render)
+-> Add ability to 'watch' file changes, e.g. routes, models, app, config, etc
 ###
 
 module.exports = (args...) ->
