@@ -12,6 +12,7 @@ fs      = require 'fs'
 require 'stylus'
 require 'nib'
 require 'connect-coffee-script'
+require 'jade'
 ###
 
 ###
