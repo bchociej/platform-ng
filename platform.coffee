@@ -162,11 +162,12 @@ class Platform
 
 				compiled_models = compiled_routes = undefined
 
-				ctx.models cfg, winston, node_env, (m) ->
-					compiled_models = m
+				do (app = @) ->
+					ctx.models cfg, winston, node_env, (m) ->
+						compiled_models = m
 
-					ctx.routes @, compiled_models, cfg, winston, node_env, (r) ->
-						compiled_routes = r
+						ctx.routes app, compiled_models, cfg, winston, node_env, (r) ->
+							compiled_routes = r
 
 				rtprint @, winston
 
