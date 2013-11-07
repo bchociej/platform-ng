@@ -19,8 +19,6 @@ require 'jade'
 TODOs
 
 -> Instead of require()ing JSON, it should be read and JSON.parse()d
--> Models and routes should be allowed to return their stuff asynchronously
--> Find out why 'view engine' isn't getting set ('no default engine and no extension specified' for res.render)
 -> Add ability to 'watch' file changes, e.g. routes, models, app, config, etc
 ###
 
@@ -90,7 +88,7 @@ class Platform
 				@set 'trust proxy', cfg.server.behind_proxy
 				@set 'port', port
 				@set 'views', ctx.views if ctx.views?
-				@set k, v for k, v in cfg.express unless k in ['env', 'views', 'trust proxy']
+				@set k, v for own k, v of cfg.express when k not in ['env', 'views', 'trust proxy']
 
 				@use express.compress() if cfg.compress
 				@use express.favicon() unless cfg.app.favicon?
@@ -162,8 +160,13 @@ class Platform
 				@use express.static ctx.sources
 				@use express.static serve_dir
 
-				compiled_models = ctx.models cfg, winston, node_env
-				compiled_routes = ctx.routes @, compiled_models, cfg, winston, node_env
+				compiled_models = compiled_routes = undefined
+
+				ctx.models cfg, winston, node_env, (m) ->
+					compiled_models = m
+
+					ctx.routes @, compiled_models, cfg, winston, node_env, (r) ->
+						compiled_routes = r
 
 				rtprint @, winston
 
