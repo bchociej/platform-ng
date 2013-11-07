@@ -88,7 +88,7 @@ class Platform
 				@set 'trust proxy', cfg.server.behind_proxy
 				@set 'port', port
 				@set 'views', ctx.views if ctx.views?
-				@set k, v for own k, v of cfg.express when k not in ['env', 'views', 'trust proxy']
+				@set k, v for own k, v of cfg.express when k not in ['env', 'views', 'trust proxy', 'port']
 
 				@use express.compress() if cfg.compress
 				@use express.favicon() unless cfg.app.favicon?
