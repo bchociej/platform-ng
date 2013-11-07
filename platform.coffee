@@ -8,11 +8,11 @@ path    = require 'path'
 fs      = require 'fs'
 
 ###
-# The following modules might be included depending on configuration:
-require 'stylus'
-require 'nib'
-require 'connect-coffee-script'
-require 'jade'
+The following modules might be included depending on configuration:
+stylus
+nib
+connect-coffee-script
+jade
 ###
 
 ###
@@ -20,6 +20,11 @@ TODOs
 
 -> Instead of require()ing JSON, it should be read and JSON.parse()d
 -> Add ability to 'watch' file changes, e.g. routes, models, app, config, etc
+-> Add other preprocessor languages
+-> The app that's passed in to routes should be an interface, not the real deal
+-> Should the entire thing be configurable strictly in JSON?
+	-> Or using chained function calls?
+	-> Or either/or?
 ###
 
 module.exports = (args...) ->

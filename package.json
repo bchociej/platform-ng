@@ -1,8 +1,7 @@
 {
 	"name": "platform-ng",
 	"description": "A quick-configuring ExpressJS webapp platform",
-	"version": "0.0.3.1",
-	"private": true,
+	"version": "0.0.4",
 	"author": {
 		"name": "Ben Chociej",
 		"email": "me@benchociej.com"
