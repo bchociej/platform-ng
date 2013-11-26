@@ -13,6 +13,7 @@
 		}
 	},
 	"server": {
+		"compress": true,
 		"port": 8001,
 		"behind_proxy": false,
 		"body_parser": true,
