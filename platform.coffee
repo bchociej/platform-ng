@@ -95,6 +95,8 @@ class Platform
 				@set 'views', ctx.views if ctx.views?
 				@set k, v for own k, v of cfg.express when k not in ['env', 'views', 'trust proxy', 'port']
 
+				@locals.pretty = not cfg.compile?.minify
+
 				@use express.compress() if cfg.server.compress
 				@use express.favicon() unless cfg.app.favicon?
 				@use express.favicon(cfg.app.favicon) if cfg.app.favicon?
