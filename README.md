@@ -166,7 +166,7 @@ function routesFn(app, models, config, logger, nodeEnvironment)
 
 The argument values will be as follows:
 
-* ```app``` - an Express-compatible API on which you should define your routes and middlewares, using ```.use()```, ```.param()```, any of the ```.VERB()``` functions, or ```.all()```
+* ```app``` - an Express-compatible API on which you should define your routes and middlewares, using ```.use()```, ```.param()```, any of the ```.VERB()``` functions, or ```.all()```. As of 0.0.7, you can use ```.namespace()``` as provided the [express-namespace](https://github.com/visionmedia/express-namespace) module.
 * ```models``` - Your models object, the result of calling your models function as described in the **Data Models** section
 * ```config``` - the platform-ng configuration
 * ```logger``` - a logger providing ```.info(msg)```, ```.warn(msg)```,
