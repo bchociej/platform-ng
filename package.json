@@ -8,6 +8,7 @@
 	},
 	"dependencies": {
 		"express": "3.x",
+		"express-namespace": "~0.1.1",
 		"coffee-script": "~1.6.3",
 		"extend": "~1.2.1",
 		"thus": "~1.0.0",
