@@ -181,4 +181,4 @@ class Platform
 				@listen port
 
 				winston.info "#{cfg.app.name} running"
-				winston.info "ExpressJS listening on :#{port}"
+				winston.info "platform-ng listening via express on :#{port}"
