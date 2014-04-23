@@ -8,11 +8,11 @@ App File (e.g. app.js)
 
 ```javascript
 require('platform-ng')('./config.json')
-	.routes('./routes/')
-	.models('./models/')
-	.sources('./src/')
-	.views('./src/view/')
-	.logs('./log/')
+	.route('./routes/')
+	.model('./models/')
+	.source('./src/')
+	.view('./src/view/')
+	.log('./log/')
 	.serve();
 ```
 
@@ -56,7 +56,11 @@ You aren't truly required to pass in anything, really. The defaults are pretty s
 
 			// you really should set this to some random, secure string
 			"secret": "change me"
-		}
+		},
+
+		// relative path to your favicon
+		// default is express's builtin
+		"favicon": "src/img/favicon.ico"
 	},
 
 	"server": {
@@ -115,10 +119,10 @@ You aren't truly required to pass in anything, really. The defaults are pretty s
 Data Models
 -----------
 
-When calling ```.models(modelsFn)``` on your platform-ng app, the ```modelsFn``` argument should be a function (or a ```require```able module exporting the same), which will receive these parameters:
+When calling ```.model(modelsFn)``` on your platform-ng app, the ```modelsFn``` argument should be a function (or a ```require```able module exporting the same), which will receive these parameters:
 
 ```javascript
-function modelsFn(config, logger, nodeEnvironment)
+function modelsFn(config, logger, nodeEnvironment, callback)
 ```
 
 The argument values will be as follows:
@@ -127,17 +131,22 @@ The argument values will be as follows:
 * ```logger``` - a logger providing ```.info(msg)```, ```.warn(msg)```,
 ```.error(msg)```, and ```.log(level, msg)```, at the very least. Currently, the logger is winston.
 * ```nodeEnvironment``` - either 'development' or 'production' depending on current configuration
+* ```callback``` - the function to call after constructing your models, passing them back to platform-ng as an argument to the callback
 
 These arguments are strictly for your own use in setting up models.
 
-Your models function should (may) return a value that will be passed to your routes for use in your application logic. A Mongoose example:
+Note that if you use ```.model(...)``` you *must* call the callback, whether or not you pass anything
+in, or else platform-ng will wait forever. If you don't call ```.model(...)```, platform-ng will
+just skip the model initialization step.
+
+Your models object, if any, will be passed to your routes for use in your application logic. A Mongoose example:
 
 ```javascript
 // models.js
 var schemas = require('./myMongooseSchemas.js');
 var mongoose = require('mongoose');
 
-module.exports = function(config, logger, nodeEnvironment) {
+module.exports = function(config, logger, nodeEnvironment, callback) {
 
 	// Note that we've added a 'database' hash to our config for convenience
 	mongoose.connect(config.database.conn_string);
@@ -146,22 +155,22 @@ module.exports = function(config, logger, nodeEnvironment) {
 		logger.error('Database connection error: ' + err);
 	});
 
-	return {
+	callback({
 		BlogPost: mongoose.model('BlogPost', schemas.blogPostSchema),
 		Comment: mongoose.model('Comment', schemas.commentSchema),
 		Author: mongoose.model('Author', schemas.authorSchema)
-	};
+	});
 };
 ```
 
 Application Routes
 ------------------
 
-When calling ```.routes(routesFn)``` on your app, routesFn should be (or be ```require```able as) a function
+When calling ```.route(routesFn)``` on your app, routesFn should be (or be ```require```able as) a function
 which will receive these parameters:
 
 ```javascript
-function routesFn(app, models, config, logger, nodeEnvironment)
+function routesFn(app, models, config, logger, nodeEnvironment, callback)
 ```
 
 The argument values will be as follows:
@@ -172,3 +181,10 @@ The argument values will be as follows:
 * ```logger``` - a logger providing ```.info(msg)```, ```.warn(msg)```,
 ```.error(msg)```, and ```.log(level, msg)```, at the very least. Currently, the logger is winston.
 * ```nodeEnvironment``` - either 'development' or 'production' depending on current configuration
+* ```callback``` - The function to call after constructing your routes; you may pass back a routes object if that's something that you need, though typically a simple call to ```callback()``` is all that's needed here
+
+Note that if you use ```.route(...)``` you *must* call the callback, whether or not you pass anything to it,
+or else platform-ng will think an error has occurred in initializing the routes. Unlike models, platform-ng
+will try to start up anyway if no routes callback is received, however, you will see an error message on exit.
+
+If you don't use ```.route(...)```, platform-ng will skip the route initialization step.
