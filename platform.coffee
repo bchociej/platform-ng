@@ -2,6 +2,7 @@ rtprint = require 'express-route-printer'
 winston = require 'winston'
 express = require 'express'
 extend  = require 'extend'
+moment  = require 'moment'
 thus    = require 'thus'
 async   = require 'async'
 path    = require 'path'
@@ -44,8 +45,8 @@ class Platform
 		platform = @
 		ctx.cfg = require './defaults.json'
 		ctx.logs = path.join @wd, './logs/'
-		ctx.routes = () -> undefined
-		ctx.models = () -> undefined
+		ctx.routes = undefined
+		ctx.models = undefined
 
 	config: (c) ->
 		ctx.cfg = extend true, {}, ctx.cfg, maybe_require(@wd, c)
@@ -76,7 +77,9 @@ class Platform
 	serve: (srv) ->
 		cfg = ctx.cfg
 		serve_dir = srv ? path.join(@wd, './.serve/')
+		wd = @wd
 		hidden_files = []
+		start_time = end_time = undefined
 
 		unless /^[a-zA-Z0-9\-\.]+$/.test cfg.app.name
 			throw new Error "Illegal app name: #{cfg.app.name}"
@@ -99,7 +102,7 @@ class Platform
 
 				@use express.compress() if cfg.server.compress
 				@use express.favicon() unless cfg.app.favicon?
-				@use express.favicon(cfg.app.favicon) if cfg.app.favicon?
+				@use express.favicon(path.join(wd, cfg.app.favicon)) if cfg.app.favicon?
 
 				winston.add winston.transports.File,
 					filename: path.join(ctx.logs, 'app.log')
@@ -168,17 +171,76 @@ class Platform
 				@use express.static serve_dir
 
 				compiled_models = compiled_routes = undefined
+				models_ok = routes_ok = false
 
-				do (app = @) ->
-					ctx.models cfg, winston, node_env, (m) ->
-						compiled_models = m
+				do_models = (app, next) ->
+					models = ctx.models
 
-						ctx.routes app, compiled_models, cfg, winston, node_env, (r) ->
-							compiled_routes = r
+					if typeof models isnt 'function'
+						winston.warn 'no models detected, skipping'
+						models = (cfg, logger, env, cb) ->
+							cb()
+					else
+						winston.info 'setting up models...'
 
-				rtprint @, winston
+					models cfg, winston, node_env, (m) -> next(app, m)
 
-				@listen port
+				do_routes = (app, models) ->
+					models_ok = true
+					compiled_models = models
+					routes = ctx.routes
 
-				winston.info "#{cfg.app.name} running"
-				winston.info "platform-ng listening via express on :#{port}"
+					if typeof routes isnt 'function'
+						winston.warn 'no routes detected, skipping'
+						routes = (a, m, c, w, e, cb) ->
+							cb()
+					else
+						winston.info 'setting up routes...'
+
+					routes app, compiled_models, cfg, winston, node_env, (r) ->
+						compiled_routes = r
+						routes_ok = true
+
+					rtprint app, winston
+
+					start_time = new Date
+					app.listen port
+
+					winston.info "#{cfg.app.name} running"
+					winston.info "platform-ng listening via express on :#{port}"
+
+				do_models(@, do_routes)
+
+				said_bye = false
+				exiter = ->
+					unless said_bye
+						end_time = new Date
+
+						unless models_ok and routes_ok
+							winston.error 'yikes! exited early due to problems with models and/or routes... check your models and routes!'
+						else
+							uptime = undefined
+
+							if start_time? and end_time?
+								hang = moment.duration(end_time - start_time)
+
+								if hang.asSeconds() > 0
+									uptime = ''
+									uptime += (hang.years() + 'y ') if hang.years() > 0
+									uptime += (hang.months() + 'M ') if hang.months() > 0
+									uptime += (hang.days() + 'd ') if hang.days() > 0
+									uptime += (hang.hours() + 'h ') if hang.hours() > 0
+									uptime += (hang.minutes() + 'm ') if hang.minutes() > 0
+									uptime += (hang.seconds() + 's ') if hang.seconds() > 0
+									uptime = uptime.trim()
+
+							winston.info 'platform-ng exiting cleanly. thanks for using!'
+
+							if uptime?
+								winston.info "uptime: #{uptime}"
+
+					said_bye = true
+					process.exit()
+
+				process.on 'exit', exiter
+				process.on 'SIGINT', exiter
