@@ -16,7 +16,11 @@
 		"compress": true,
 		"port": 8001,
 		"behind_proxy": false,
-		"body_parser": true,
+		"parsers": {
+			"urlencoded": true,
+			"json": true,
+			"multipart": false
+		},
 		"method_override": false
 	},
 	"languages": {
