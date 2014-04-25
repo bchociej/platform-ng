@@ -1,7 +1,7 @@
 platform-ng
 ===========
 
-Rapid, sane configuration of ExpressJS.
+Rapid, sane configuration of ExpressJS. 0.2.x will probably be the last minor series to use express 3.
 
 App File (e.g. app.js)
 ----------------------
