@@ -26,6 +26,8 @@ TODOs
 -> Should the entire thing be configurable strictly in JSON?
 	-> Or using chained function calls?
 	-> Or either/or?
+-> Need to be able to pass in custom middlewares!
+-> EXPRESS 4.x!
 ###
 
 module.exports = (args...) ->
@@ -118,7 +120,18 @@ class Platform
 					format: 'short'
 					stream: fs.createWriteStream path.join(ctx.logs, 'express.log')
 
-				@use express.bodyParser() if cfg.server.body_parser
+				if cfg.server.body_parser or cfg.server.parsers.body_parser
+					if cfg.server.body_parser
+						winston.warn 'deprecated cfg option server.body_parser (Connect 2 bodyParser)'
+						winston.warn 'use server.parsers.* instead; json and urlencoded are on by default'
+					else if cfg.server.parsers.body_parser
+						winston.warn 'using deprecated Connect 2 bodyParser (cfg: server.parsers.body_parser)'
+
+					@use express.bodyParser()
+
+				@use express.json() if cfg.server.parsers.json
+				@use express.urlencoded() if cfg.server.parsers.urlencoded
+				@use express.multipart() if cfg.server.parsers.multipart
 				@use express.methodOverride() if cfg.server.method_override
 				@use express.cookieParser(cfg.app.cookies?.secret or null) if cfg.app.cookies?.enabled
 
