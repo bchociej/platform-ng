@@ -1,7 +1,7 @@
 platform-ng
 ===========
 
-Rapid, sane configuration of ExpressJS.
+Rapid, sane configuration of ExpressJS. 0.2.x will probably be the last minor series to use express 3.
 
 App File (e.g. app.js)
 ----------------------
@@ -11,6 +11,7 @@ require('platform-ng')('./config.json')
 	.route('./routes/')
 	.model('./models/')
 	.source('./src/')
+	.middleware('./middlewares/')
 	.view('./src/view/')
 	.log('./log/')
 	.serve();
@@ -163,6 +164,29 @@ module.exports = function(config, logger, nodeEnvironment, callback) {
 };
 ```
 
+Middleware
+----------
+
+You can tell platform-ng to use custom middleware in your application. When calling
+```.middleware(middlewareFn)```, middlewareFn should be (or be ```require```able as) a function which will
+receive these parameters:
+
+```javascript
+function middlewareFn(models, config, logger, nodeEnvironment, callback)
+```
+
+The argument values will be as follows:
+
+* ```models``` - Your models object, the result of calling your models function as described in the **Data Models** section
+* ```config``` - the platform-ng configuration
+* ```logger``` - a logger providing ```.info(msg)```, ```.warn(msg)```,
+```.error(msg)```, and ```.log(level, msg)```, at the very least. Currently, the logger is winston.
+* ```nodeEnvironment``` - either 'development' or 'production' depending on current configuration
+* ```callback``` - The callback function which will receive your models. You should pass in either a single
+middleware function or an array of middleware functions in the order you wish them to be applied. Middleware
+functions should be compatible with the ```function``` definition in [Express 3.x's app.use doc](http://expressjs.com/3x/api.html#app.use).
+
+
 Application Routes
 ------------------
 
@@ -175,7 +199,7 @@ function routesFn(app, models, config, logger, nodeEnvironment, callback)
 
 The argument values will be as follows:
 
-* ```app``` - an Express-compatible API on which you should define your routes and middlewares, using ```.use()```, ```.param()```, any of the ```.VERB()``` functions, or ```.all()```. As of 0.1.0, you can use ```.namespace()``` as provided the [express-namespace](https://github.com/visionmedia/express-namespace) module.
+* ```app``` - an Express-compatible API on which you should define your routes and middlewares, using ```.use()```, ```.param()```, any of the ```.VERB()``` functions, or ```.all()```. As of 0.1.0, you can use ```.namespace()``` as provided by the [express-namespace](https://github.com/visionmedia/express-namespace) module.
 * ```models``` - Your models object, the result of calling your models function as described in the **Data Models** section
 * ```config``` - the platform-ng configuration
 * ```logger``` - a logger providing ```.info(msg)```, ```.warn(msg)```,

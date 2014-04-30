@@ -49,6 +49,7 @@ class Platform
 		ctx.logs = path.join @wd, './logs/'
 		ctx.routes = undefined
 		ctx.models = undefined
+		ctx.middlewares = undefined
 
 	config: (c) ->
 		ctx.cfg = extend true, {}, ctx.cfg, maybe_require(@wd, c)
@@ -57,6 +58,11 @@ class Platform
 	route: (rts) ->
 		maybe_routes = maybe_require @wd, rts
 		ctx.routes = maybe_routes if typeof maybe_routes is 'function'
+		platform
+
+	middleware: (mws) ->
+		maybe_middleware = maybe_require @wd, mws
+		ctx.middlewares = maybe_middleware if typeof maybe_middleware is 'function'
 		platform
 
 	model: (mdl) ->
@@ -120,117 +126,163 @@ class Platform
 					format: 'short'
 					stream: fs.createWriteStream path.join(ctx.logs, 'express.log')
 
-				if cfg.server.body_parser or cfg.server.parsers.body_parser
-					if cfg.server.body_parser
-						winston.warn 'deprecated cfg option server.body_parser (Connect 2 bodyParser)'
-						winston.warn 'use server.parsers.* instead; json and urlencoded are on by default'
-					else if cfg.server.parsers.body_parser
-						winston.warn 'using deprecated Connect 2 bodyParser (cfg: server.parsers.body_parser)'
-
-					@use express.bodyParser()
-
-				@use express.json() if cfg.server.parsers.json
-				@use express.urlencoded() if cfg.server.parsers.urlencoded
-				@use express.multipart() if cfg.server.parsers.multipart
-				@use express.methodOverride() if cfg.server.method_override
-				@use express.cookieParser(cfg.app.cookies?.secret or null) if cfg.app.cookies?.enabled
-
-				if cfg.app.session?.enabled
-					if cfg.app.session?.type is "cookie"
-						@use express.cookieSession
-							key: "#{cfg.app.name}.session"
-							secret: cfg.app.session?.secret
-							proxy: cfg.server.behind_proxy
-					else
-						throw new Error "Unknown session type #{cfg.app.session?.type}"
-
-				switch cfg.express['view engine']
-					when 'jade' then hidden_files.push 'jade'
-
-				if ctx.sources?
-					if cfg.languages?.coffeescript
-						hidden_files.push 'coffee'
-						coffeemw = require 'connect-coffee-script'
-
-						@use coffeemw
-							src: ctx.sources
-							dest: serve_dir
-							sourceMap: cfg.compile?.expose_sources
-
-					if cfg.languages?.stylus
-						hidden_files.push 'styl'
-						stylus = require 'stylus'
-
-						@use stylus.middleware
-							src: ctx.sources
-							dest: serve_dir
-							compile: (str, path, fn) ->
-								s = stylus(str)
-									.set('filename', path)
-									.set('include css', cfg.languages?.stylus?.include_css)
-									.set('compress', cfg.compile?.minify)
-
-								if cfg.languages?.stylus?.nib
-									s.use require('nib')()
-
-				unless cfg.compile?.expose_sources
-					app.get /.+/, (req, res, next) ->
-						if req.path.split('.').pop() in hidden_files
-							res.send 404
-						else
-							next()
-
-				@use express.static ctx.sources
-				@use express.static serve_dir
-
 				compiled_models = compiled_routes = undefined
-				models_ok = routes_ok = false
+				models_ok = mws_ok = routes_ok = false
 
-				do_models = (app, next) ->
-					models = ctx.models
+				app = @
+				async.waterfall [
+					do_models = (callback) ->
+						models = ctx.models
 
-					if typeof models isnt 'function'
-						winston.warn 'no models detected, skipping'
-						models = (cfg, logger, env, cb) ->
-							cb()
+						if typeof models isnt 'function'
+							winston.warn 'no models detected, skipping'
+							models = (cfg, logger, env, cb) ->
+								cb()
+						else
+							winston.info 'setting up app-defined models'
+
+						models cfg, winston, node_env, (mdl) ->
+							compiled_models = mdl
+							models_ok = true
+							callback()
+					,
+					do_middlewares = (callback) ->
+						mws = ctx.middlewares
+
+						if typeof mws isnt 'function'
+							mws = (models, cfg, logger, env, cb) ->
+								cb()
+
+						mws compiled_models, cfg, winston, node_env, (mw) ->
+							if typeof mw is 'function'
+								mw = [mw]
+
+							if mw instanceof Array and mw.length > 0
+								mw_count = 0
+
+								for m in mw
+									if typeof m is 'function'
+										mw_count++
+										app.use m
+									else
+										winston.warn "middleware at index #{mw.indexOf(m)} is not a function"
+
+								winston.info "using #{mw_count} custom middleware#{if mw_count > 1 then 's' else ''}"
+
+							mws_ok = true
+							callback()
+					,
+					do_routes = (callback) ->
+						routes = ctx.routes
+
+						if typeof routes isnt 'function'
+							winston.warn 'no routes detected, skipping'
+							routes = (a, m, c, w, e, cb) ->
+								cb()
+						else
+							winston.info 'setting up app-defined routes'
+
+						routes app, compiled_models, cfg, winston, node_env, (r) ->
+							app.use app.router
+							compiled_routes = r
+							routes_ok = true
+							callback()
+				], (err) ->
+					if err?
+						winston.error err
 					else
-						winston.info 'setting up models...'
+						finish_setup()
 
-					models cfg, winston, node_env, (m) -> next(app, m)
+				finish_setup = do (app = @) ->
+					fn = ->
+						if cfg.server.body_parser or cfg.server.parsers.body_parser
+							if cfg.server.body_parser
+								winston.warn 'deprecated cfg option server.body_parser (Connect 2 bodyParser)'
+								winston.warn 'use server.parsers.* instead; json and urlencoded are on by default'
+							else if cfg.server.parsers.body_parser
+								winston.warn 'using deprecated Connect 2 bodyParser (cfg: server.parsers.body_parser)'
 
-				do_routes = (app, models) ->
-					models_ok = true
-					compiled_models = models
-					routes = ctx.routes
+							@use express.bodyParser()
 
-					if typeof routes isnt 'function'
-						winston.warn 'no routes detected, skipping'
-						routes = (a, m, c, w, e, cb) ->
-							cb()
-					else
-						winston.info 'setting up routes...'
+						@use express.json() if cfg.server.parsers.json
+						@use express.urlencoded() if cfg.server.parsers.urlencoded
+						@use express.multipart() if cfg.server.parsers.multipart
+						@use express.methodOverride() if cfg.server.method_override
+						@use express.cookieParser(cfg.app.cookies?.secret or null) if cfg.app.cookies?.enabled
 
-					routes app, compiled_models, cfg, winston, node_env, (r) ->
-						compiled_routes = r
-						routes_ok = true
+						if cfg.app.session?.enabled
+							if cfg.app.session?.type is "cookie"
+								@use express.cookieSession
+									key: "#{cfg.app.name}.session"
+									secret: cfg.app.session?.secret
+									proxy: cfg.server.behind_proxy
+							else
+								throw new Error "Unknown session type #{cfg.app.session?.type}"
 
-					rtprint app, winston
+						switch cfg.express['view engine']
+							when 'jade' then hidden_files.push 'jade'
 
-					start_time = new Date
-					app.listen port
+						if ctx.sources?
+							if cfg.languages?.coffeescript
+								hidden_files.push 'coffee'
+								coffeemw = require 'connect-coffee-script'
 
-					winston.info "#{cfg.app.name} running"
-					winston.info "platform-ng listening via express on :#{port}"
+								@use coffeemw
+									src: ctx.sources
+									dest: serve_dir
+									sourceMap: cfg.compile?.expose_sources
 
-				do_models(@, do_routes)
+							if cfg.languages?.stylus
+								hidden_files.push 'styl'
+								stylus = require 'stylus'
+
+								@use stylus.middleware
+									src: ctx.sources
+									dest: serve_dir
+									compile: (str, path, fn) ->
+										s = stylus(str)
+											.set('filename', path)
+											.set('include css', cfg.languages?.stylus?.include_css)
+											.set('compress', cfg.compile?.minify)
+
+										if cfg.languages?.stylus?.nib
+											s.use require('nib')()
+
+						unless cfg.compile?.expose_sources
+							app.get /.+/, (req, res, next) ->
+								if req.path.split('.').pop() in hidden_files
+									res.send 404
+								else
+									next()
+
+						@use express.static ctx.sources
+						@use express.static serve_dir
+
+						start_time = new Date
+						@listen port
+						rtprint @, winston
+
+						winston.info "#{cfg.app.name} is running!"
+						winston.info "platform-ng is listening via express on port #{port}"
+
+					-> fn.call app
+
 
 				said_bye = false
 				exiter = ->
 					unless said_bye
 						end_time = new Date
 
-						unless models_ok and routes_ok
-							winston.error 'yikes! exited early due to problems with models and/or routes... check your models and routes!'
+						unless models_ok and routes_ok and mws_ok
+							winston.error 'yikes! exited early due to problems:'
+
+							if not models_ok
+								winston.error 'models initialization failed'
+							else if not mws_ok
+								winston.error 'middlewares initialization failed'
+							else if not routes_ok
+								winston.error 'routes initialization failed'
+
 						else
 							uptime = undefined
 
