@@ -115,12 +115,13 @@ class Platform
 				winston.add winston.transports.File,
 					filename: path.join(ctx.logs, 'app.log')
 
-				@configure 'development', ->
-					@use express.logger('dev')
-					@use express.errorHandler()
+				switch @get 'env'
+					when 'development'
+						@use express.logger('dev')
+						@use express.errorHandler()
 
-				@configure 'production', ->
-					winston.remove winston.transports.Console
+					when 'production'
+						winston.remove winston.transports.Console
 
 				@use express.logger
 					format: 'short'
