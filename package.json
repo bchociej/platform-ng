@@ -16,7 +16,9 @@
 		"async": "0.7.x",
 		"express-route-printer": "1.0.x",
 		"winston": "0.7.x",
-		"moment": "2.5.x"
+		"moment": "2.5.x",
+		"through": "2.3.x",
+		"colors": "0.6.x"
 	},
 	"optionalDependencies": {
 		"stylus": "0.43.x",

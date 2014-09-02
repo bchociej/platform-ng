@@ -1,12 +1,13 @@
-rtprint = require 'express-route-printer'
-winston = require 'winston'
-express = require 'express'
-extend  = require 'extend'
-moment  = require 'moment'
-thus    = require 'thus'
-async   = require 'async'
-path    = require 'path'
-fs      = require 'fs'
+rtprint  = require 'express-route-printer'
+through  = require 'through'
+winston  = require 'winston'
+express  = require 'express'
+extend   = require 'extend'
+moment   = require 'moment'
+thus     = require 'thus'
+async    = require 'async'
+path     = require 'path'
+fs       = require 'fs'
 
 ###
 The following modules might be included depending on configuration:
@@ -117,8 +118,27 @@ class Platform
 
 				switch @get 'env'
 					when 'development'
-						@use express.logger('dev')
+						winston.info 'env = development'
+
+						greystream = through (d) ->
+							d = d.toString().stripColors
+							d = d.split ' '
+
+							d[0] = d[0].green
+							d[1] = d[1].cyan
+
+							d[2] = d[2].white.bold.redBG if d[2] isnt '200'
+
+							d = d.join ' '
+
+							@queue d
+
+						greystream.pipe process.stdout
+
 						@use express.errorHandler()
+						@use express.logger
+							format: 'tiny'
+							stream: greystream
 
 					when 'production'
 						winston.remove winston.transports.Console
