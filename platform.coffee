@@ -31,6 +31,12 @@ TODOs
 -> EXPRESS 4.x!
 ###
 
+codes =
+	EXITING_CLEANLY: 0
+	UNCAUGHT_EXCEPTION: 1
+	INITIALIZATION_FAILED: 2
+	ADDRESS_IN_USE: 3
+
 module.exports = (args...) ->
 	new Platform args...
 
@@ -290,43 +296,60 @@ class Platform
 
 
 				said_bye = false
-				exiter = ->
-					unless said_bye
-						end_time = new Date
+				exiter = (type) ->
+					(error) ->
+						unless said_bye
+							end_time = new Date
 
-						unless models_ok and routes_ok and mws_ok
-							winston.error 'yikes! exited early due to problems:'
+							code = codes.EXITING_CLEANLY
 
-							if not models_ok
-								winston.error 'models initialization failed'
-							else if not mws_ok
-								winston.error 'middlewares initialization failed'
-							else if not routes_ok
-								winston.error 'routes initialization failed'
+							if type is 'uncaughtException'
+								if error.code is 'EADDRINUSE'
+									winston.error "port #{port} is already in use, so I can't bind to it. exiting."
+									code = codes.ADDRESS_IN_USE
+								else
+									winston.error 'uncaught exception causing platform-ng to exit:'
+									winston.error if typeof error is 'string' then error else JSON.stringify(error, null, 4)
+									code = codes.UNCAUGHT_EXCEPTION
 
-						else
-							uptime = undefined
+							else unless models_ok and routes_ok and mws_ok
+								winston.error 'yikes! exiting early due to problems:'
 
-							if start_time? and end_time?
-								hang = moment.duration(end_time - start_time)
+								if not models_ok
+									winston.error 'models initialization failed'
+								else if not mws_ok
+									winston.error 'middlewares initialization failed'
+								else if not routes_ok
+									winston.error 'routes initialization failed'
 
-								if hang.asSeconds() > 0
-									uptime = ''
-									uptime += (hang.years() + 'y ') if hang.years() > 0
-									uptime += (hang.months() + 'M ') if hang.months() > 0
-									uptime += (hang.days() + 'd ') if hang.days() > 0
-									uptime += (hang.hours() + 'h ') if hang.hours() > 0
-									uptime += (hang.minutes() + 'm ') if hang.minutes() > 0
-									uptime += (hang.seconds() + 's ') if hang.seconds() > 0
-									uptime = uptime.trim()
+								code = codes.INITIALIZATION_FAILED
 
-							winston.info 'platform-ng exiting cleanly. thanks for using!'
+							else
+								uptime = undefined
 
-							if uptime?
-								winston.info "uptime: #{uptime}"
+								if start_time? and end_time?
+									hang = moment.duration(end_time - start_time)
 
-					said_bye = true
-					process.exit()
+									if hang.asSeconds() > 0
+										uptime = ''
+										uptime += (hang.years() + 'y ') if hang.years() > 0
+										uptime += (hang.months() + 'M ') if hang.months() > 0
+										uptime += (hang.days() + 'd ') if hang.days() > 0
+										uptime += (hang.hours() + 'h ') if hang.hours() > 0
+										uptime += (hang.minutes() + 'm ') if hang.minutes() > 0
+										uptime += (hang.seconds() + 's ') if hang.seconds() > 0
+										uptime = uptime.trim()
 
-				process.on 'exit', exiter
-				process.on 'SIGINT', exiter
+								winston.info 'platform-ng exiting cleanly. thanks for using!'
+
+								if uptime?
+									winston.info "uptime: #{uptime}"
+
+							said_bye = true
+
+						unless type is 'exit'
+							process.exit code
+
+				process.on 'exit', exiter('exit')
+				process.on 'SIGINT', exiter('SIGINT')
+				process.on 'uncaughtException', exiter('uncaughtException')
