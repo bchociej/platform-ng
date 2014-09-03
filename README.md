@@ -3,6 +3,12 @@ platform-ng
 
 Rapid, sane configuration of ExpressJS. 0.2.x will probably be the last minor series to use express 3.
 
+Platform-ng is retty robust at this point, and there are a handful of known production uses across at least 3 organizations.
+
+That said, platform-ng has not been exhaustively tested, so use it at your own risk. Importantly, platform-ng is provided AS IS and WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTIBILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+Pull requests welcome, questions to bchociej on github or <platform-ng@chociej.io>.
+
 App File (e.g. app.js)
 ----------------------
 
