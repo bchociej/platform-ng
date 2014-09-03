@@ -5,7 +5,7 @@
 	"license": "MIT",
 	"author": {
 		"name": "Ben Chociej",
-		"email": "me@benchociej.com"
+		"email": "platform-ng@chociej.io"
 	},
 	"dependencies": {
 		"express": "3.x",
