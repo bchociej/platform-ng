@@ -1,7 +1,7 @@
 {
 	"name": "platform-ng",
 	"description": "A quick-configuring ExpressJS webapp platform",
-	"version": "0.2.6",
+	"version": "0.2.7",
 	"license": "MIT",
 	"author": {
 		"name": "Ben Chociej",
@@ -18,7 +18,8 @@
 		"winston": "0.7.x",
 		"moment": "2.5.x",
 		"through": "2.3.x",
-		"colors": "0.6.x"
+		"colors": "0.6.x",
+		"body-parser": "1.9.x"
 	},
 	"optionalDependencies": {
 		"stylus": "0.43.x",
