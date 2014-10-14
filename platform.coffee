@@ -4,6 +4,7 @@ winston  = require 'winston'
 express  = require 'express'
 extend   = require 'extend'
 moment   = require 'moment'
+parser   = require 'body-parser'
 thus     = require 'thus'
 async    = require 'async'
 path     = require 'path'
@@ -156,6 +157,19 @@ class Platform
 				compiled_models = compiled_routes = undefined
 				models_ok = mws_ok = routes_ok = false
 
+				if cfg.server.body_parser or cfg.server.parsers.body_parser
+					if cfg.server.body_parser
+						winston.warn 'deprecated cfg option server.body_parser (Connect 2 bodyParser)'
+						winston.warn 'use server.parsers.* instead; json and urlencoded are on by default'
+					else if cfg.server.parsers.body_parser
+						winston.warn 'using deprecated Connect 2 bodyParser (cfg: server.parsers.body_parser)'
+
+					@use express.bodyParser()
+
+				@use parser.json({}) if cfg.server.parsers.json
+				@use parser.urlencoded({extended: true}) if cfg.server.parsers.urlencoded
+				@use express.multipart() if cfg.server.parsers.multipart
+
 				app = @
 				async.waterfall [
 					do_models = (callback) ->
@@ -210,7 +224,6 @@ class Platform
 							winston.info 'setting up app-defined routes'
 
 						routes app, compiled_models, cfg, winston, node_env, (r) ->
-							app.use app.router
 							compiled_routes = r
 							routes_ok = true
 							callback()
@@ -222,20 +235,10 @@ class Platform
 
 				finish_setup = do (app = @) ->
 					fn = ->
-						if cfg.server.body_parser or cfg.server.parsers.body_parser
-							if cfg.server.body_parser
-								winston.warn 'deprecated cfg option server.body_parser (Connect 2 bodyParser)'
-								winston.warn 'use server.parsers.* instead; json and urlencoded are on by default'
-							else if cfg.server.parsers.body_parser
-								winston.warn 'using deprecated Connect 2 bodyParser (cfg: server.parsers.body_parser)'
-
-							@use express.bodyParser()
-
-						@use express.json() if cfg.server.parsers.json
-						@use express.urlencoded() if cfg.server.parsers.urlencoded
-						@use express.multipart() if cfg.server.parsers.multipart
 						@use express.methodOverride() if cfg.server.method_override
 						@use express.cookieParser(cfg.app.cookies?.secret or null) if cfg.app.cookies?.enabled
+
+						@use @router
 
 						if cfg.app.session?.enabled
 							if cfg.app.session?.type is "cookie"
