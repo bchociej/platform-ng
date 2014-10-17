@@ -237,8 +237,7 @@ class Platform
 					fn = ->
 						@use express.methodOverride() if cfg.server.method_override
 
-						@use express.cookieParser({
-							secret: cfg.app.cookies?.secret,
+						@use express.cookieParser(cfg.app.cookies?.secret, {
 							secure: cfg.app.cookies?.secure
 						}) if cfg.app.cookies?.enabled
 
