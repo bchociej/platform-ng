@@ -136,7 +136,7 @@ class Platform
 							d[0] = d[0].green
 							d[1] = d[1].cyan
 
-							d[2] = d[2].white.bold.redBG if d[2] isnt '200'
+							d[2] = d[2].white.bold.redBG unless 200 <= parseInt(d[2]) < 300
 
 							d = d.join ' '
 

@@ -18,11 +18,16 @@ than the string `'production'` is automatically considered `'development'` for d
 			env: 'development'
 
 For sessions, you can choose to entirely disable them by setting `enabled` to `false`. Otherwise, your
-choices for `type` are currently `cookie` or `vanilla`. The `cookie` type stores all session data in
-a signed, garbled (not encrypted) client-side cookie. The `vanilla` type stores the session in a
-server-side session store and only transmits a signed session ID to the client. `cookie` is default for
-now, but `vanilla` will replace it in the next major version. The `secure` option determines whether
-the cookies are HTTPS-only or not.
+choices for `type` are currently `cookie` or `vanilla`.
+
+The `cookie` type stores all session data in a garbled (not encrypted) client-side cookie, signed using
+the `secret`.
+
+The `vanilla` type stores the session in a server-side session store and only transmits a signed session
+ID to the client.
+
+`cookie` is default for now, but `vanilla` will replace it in the next major version. The `secure` option
+determines whether the cookies are HTTPS-only or not.
 
 			session:
 				enabled: true
@@ -81,8 +86,8 @@ for some of the languages. (The NPM dependencies for these languages are listed 
 
 `compile` controls generic compilation options for all language compilers. The `minify` option will
 cause the compiler to munge the output in order to produce the smallest possible code. The `expose_sources`
-option will cause the server to serve the original files (e.g. .coffee, .styl, etc), AND it will ask the
-compiler to generate source maps, if supported.
+option will cause the server to serve the original files (e.g. .coffee, .styl, etc) if requested, AND it
+will ask the compiler to generate source maps, if supported.
 
 		compile:
 			minify: true
