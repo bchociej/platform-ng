@@ -91,14 +91,20 @@ for some of the languages. (The NPM dependencies for these languages are listed 
 				include_css: true	# Whether to inline @include()'d CSS files
 				nib: true			# Whether to automatically load the nib library
 
+### Compilation
+
 `compile` controls generic compilation options for all language compilers. The `minify` option will
 cause the compiler to munge the output in order to produce the smallest possible code. The `expose_sources`
 option will cause the server to serve the original files (e.g. .coffee, .styl, etc) if requested, AND it
 will ask the compiler to generate source maps, if supported.
 
+Compilation results are stored in and served from the `.serve/` directory, created and updated at runtime.
+
 		compile:
 			minify: true
 			expose_sources: true 
+
+### Express configuration
 
 platform-ng is powered by Express. You can directly configure Express settings here. The settings are
 documented on [this page](http://expressjs.com/3x/api.html#app-settings).
