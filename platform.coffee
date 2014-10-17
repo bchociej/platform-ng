@@ -103,8 +103,6 @@ class Platform
 		port = process.env.PORT ? cfg.server.port
 		node_env = process.env.NODE_ENV ? cfg.app.env
 
-		console.log JSON.stringify(cfg, null, 4)
-
 		async.each [ctx.logs, serve_dir], fs.mkdir, ->
 			if node_env isnt 'production'
 				node_env = 'development'
