@@ -1,8 +1,6 @@
 *This is [Literate Coffeescript](http://coffeescript.org/#literate): code interleaved with Markdown
 comments. The Coffeescript compiler will strip the Markdown and compile it like any other file.*
 
-	module.exports =
-
 ## platform-ng config defaults
 
 This file defines the default configuration options for platform-ng and explains
@@ -16,6 +14,7 @@ yours to produce the working configuration.
 What's the app called (`name`), and what environment is it running in (`env`)? For `env`, anything other
 than the string `'production'` is automatically considered `'development'` for debuggability.
 
+	module.exports =
 		app:
 			name: 'unnamed-app'
 			env: 'development'
