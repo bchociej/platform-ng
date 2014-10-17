@@ -28,8 +28,8 @@ TODOs
 -> Should the entire thing be configurable strictly in JSON?
 	-> Or using chained function calls?
 	-> Or either/or?
--> Need to be able to pass in custom middlewares!
 -> EXPRESS 4.x!
+-> The middlewares interface feels clunky...
 ###
 
 codes =
@@ -53,7 +53,7 @@ class Platform
 
 	constructor: (@wd) ->
 		platform = @
-		ctx.cfg = require './defaults.json'
+		ctx.cfg = require './config-defaults.litcoffee'
 		ctx.logs = path.join @wd, './logs/'
 		ctx.routes = undefined
 		ctx.models = undefined
@@ -134,7 +134,7 @@ class Platform
 							d[0] = d[0].green
 							d[1] = d[1].cyan
 
-							d[2] = d[2].white.bold.redBG if d[2] isnt '200'
+							d[2] = d[2].white.bold.redBG unless 200 <= parseInt(d[2]) < 300
 
 							d = d.join ' '
 
@@ -236,7 +236,10 @@ class Platform
 				finish_setup = do (app = @) ->
 					fn = ->
 						@use express.methodOverride() if cfg.server.method_override
-						@use express.cookieParser(cfg.app.cookies?.secret or null) if cfg.app.cookies?.enabled
+
+						@use express.cookieParser(cfg.app.cookies?.secret, {
+							secure: cfg.app.cookies?.secure
+						}) if cfg.app.cookies?.enabled
 
 						@use @router
 
@@ -246,14 +249,20 @@ class Platform
 									key: "#{cfg.app.name}.session"
 									secret: cfg.app.session?.secret
 									proxy: cfg.server.behind_proxy
+							else if cfg.app.session?.type is "vanilla"
+								@use express.session
+									name: "#{cfg.app.name}.sid"
+									secret: cfg.app.session?.secret
+									cookie:
+										secure: cfg.app.session?.secure
 							else
-								throw new Error "Unknown session type #{cfg.app.session?.type}"
+								winston.error "Unknown session type #{cfg.app.session?.type}; sessions disabled"
 
 						switch cfg.express['view engine']
 							when 'jade' then hidden_files.push 'jade'
 
 						if ctx.sources?
-							if cfg.languages?.coffeescript
+							if cfg.languages?.coffeescript?.enabled
 								hidden_files.push 'coffee'
 								coffeemw = require 'connect-coffee-script'
 
@@ -262,7 +271,7 @@ class Platform
 									dest: serve_dir
 									sourceMap: cfg.compile?.expose_sources
 
-							if cfg.languages?.stylus
+							if cfg.languages?.stylus?.enabled
 								hidden_files.push 'styl'
 								stylus = require 'stylus'
 
