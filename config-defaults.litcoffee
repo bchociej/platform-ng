@@ -1,8 +1,11 @@
+*This is [Literate Coffeescript](http://coffeescript.org/#literate): code interleaved with Markdown
+comments. The Coffeescript compiler will strip the Markdown and compile it like any other file.*
+
 	module.exports =
 
 ## platform-ng config defaults
 
-This literate Coffeescript file defines the default configuration options for platform-ng and explains
+This file defines the default configuration options for platform-ng and explains
 how can modify the configuration to suit your needs.
 
 When you call `Platform#config()` with your configuration object, this configuration is deep-extended with
