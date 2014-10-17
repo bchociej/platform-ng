@@ -17,6 +17,8 @@ than the string `'production'` is automatically considered `'development'` for d
 			name: 'unnamed-app'
 			env: 'development'
 
+#### Sessions
+
 For sessions, you can choose to entirely disable them by setting `enabled` to `false`. Otherwise, your
 choices for `type` are currently `cookie` or `vanilla`.
 
@@ -35,14 +37,17 @@ determines whether the cookies are HTTPS-only or not.
 				secret: 'change-me'
 				secure: false
 
-The `cookies` section is for generic, non-session-related cookie usage. You can store anything in here that
-you want the browser to remember. Again, `secret` signs and garbles the cookie contents, and `secure` means
-HTTPS-only.
+#### Cookie parser
+
+The cookie parser transforms the `cookie` header into `request.cookies`, `request.signedCookies`, and
+`request.secureCookies` objects. You still have to use `response.cookie(...)` and/or 
+`response.clearCookie(...)` to actually manipulate cookies. The `secret` defined here will be used to
+verify signed cookies, and, if you set `{signed: true}` in the third argument to `response.cookie(...)`,
+this `secret` will be used to sign the outbound cookies too.
 
 			cookies:
 				enabled: true
 				secret: 'change-me'
-				secure: false
 
 ### HTTP server configuration
 

@@ -259,7 +259,7 @@ class Platform
 									cookie:
 										secure: cfg.app.session?.secure
 							else
-								throw new Error "Unknown session type #{cfg.app.session?.type}"
+								winston.error "Unknown session type #{cfg.app.session?.type}; sessions disabled"
 
 						switch cfg.express['view engine']
 							when 'jade' then hidden_files.push 'jade'
