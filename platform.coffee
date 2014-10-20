@@ -188,13 +188,21 @@ class Platform
 
 						winston.info "cookie sessions activated"
 					else if cfg.app.session?.type is "vanilla"
-						@use express.session
+						sesscfg =
 							name: "#{cfg.app.name}.sid"
 							secret: cfg.app.session?.secret
 							cookie:
 								secure: cfg.app.session?.secure
 
-						winston.info "vanilla sessions activated"
+						if cfg.app.session?.store?.type is 'mongo'
+							MongoStore = require('connect-mongo')(express)
+							opts = extend true, {}, cfg.app.session.store
+							delete opts.type
+							sesscfg.store = new MongoStore opts
+
+						@use express.session sesscfg
+
+						winston.info "vanilla sessions activated" + (if sesscfg.store? then " (store: #{cfg.app.session.store.type})" else '')
 					else
 						winston.error "Unknown session type #{cfg.app.session?.type}; sessions disabled"
 
