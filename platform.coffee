@@ -154,6 +154,8 @@ class Platform
 					format: 'short'
 					stream: fs.createWriteStream path.join(ctx.logs, 'express.log')
 
+				winston.info JSON.stringify(cfg, null, '\t')
+
 				compiled_models = compiled_routes = undefined
 				models_ok = mws_ok = routes_ok = false
 
@@ -169,6 +171,32 @@ class Platform
 				@use parser.json({}) if cfg.server.parsers.json
 				@use parser.urlencoded({extended: true}) if cfg.server.parsers.urlencoded
 				@use express.multipart() if cfg.server.parsers.multipart
+
+				if cfg.app.cookies?.enabled
+					@use express.cookieParser(cfg.app.cookies?.secret, {
+						secure: cfg.app.cookies?.secure
+					})
+
+					winston.info 'cookie parser activated'
+
+				if cfg.app.session?.enabled
+					if cfg.app.session?.type is "cookie"
+						@use express.cookieSession
+							key: "#{cfg.app.name}.session"
+							secret: cfg.app.session?.secret
+							proxy: cfg.server.behind_proxy
+
+						winston.info "cookie sessions activated"
+					else if cfg.app.session?.type is "vanilla"
+						@use express.session
+							name: "#{cfg.app.name}.sid"
+							secret: cfg.app.session?.secret
+							cookie:
+								secure: cfg.app.session?.secure
+
+						winston.info "vanilla sessions activated"
+					else
+						winston.error "Unknown session type #{cfg.app.session?.type}; sessions disabled"
 
 				app = @
 				async.waterfall [
@@ -235,28 +263,11 @@ class Platform
 
 				finish_setup = do (app = @) ->
 					fn = ->
-						@use express.methodOverride() if cfg.server.method_override
-
-						@use express.cookieParser(cfg.app.cookies?.secret, {
-							secure: cfg.app.cookies?.secure
-						}) if cfg.app.cookies?.enabled
+						if cfg.server.method_override
+							@use express.methodOverride()
+							winston.info 'method override activated'
 
 						@use @router
-
-						if cfg.app.session?.enabled
-							if cfg.app.session?.type is "cookie"
-								@use express.cookieSession
-									key: "#{cfg.app.name}.session"
-									secret: cfg.app.session?.secret
-									proxy: cfg.server.behind_proxy
-							else if cfg.app.session?.type is "vanilla"
-								@use express.session
-									name: "#{cfg.app.name}.sid"
-									secret: cfg.app.session?.secret
-									cookie:
-										secure: cfg.app.session?.secure
-							else
-								winston.error "Unknown session type #{cfg.app.session?.type}; sessions disabled"
 
 						switch cfg.express['view engine']
 							when 'jade' then hidden_files.push 'jade'
