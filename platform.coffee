@@ -121,7 +121,7 @@ class Platform
 				@use express.favicon(path.join(wd, cfg.app.favicon)) if cfg.app.favicon?
 
 				winston.add winston.transports.File,
-					filename: path.join(ctx.logs, 'app.log')
+					stream: (through (d) -> @queue(d.toString().stripColors)).pipe(fs.createWriteStream(path.join(ctx.logs, 'app.log')))
 
 				switch @get 'env'
 					when 'development'
@@ -151,10 +151,8 @@ class Platform
 						winston.remove winston.transports.Console
 
 				@use express.logger
-					format: 'short'
-					stream: fs.createWriteStream path.join(ctx.logs, 'express.log')
-
-				winston.info JSON.stringify(cfg, null, '\t')
+					format: 'default'
+					stream: (through (d) -> @queue(d.toString().stripColors)).pipe(fs.createWriteStream(path.join(ctx.logs, 'express.log')))
 
 				compiled_models = compiled_routes = undefined
 				models_ok = mws_ok = routes_ok = false
