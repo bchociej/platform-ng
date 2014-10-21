@@ -6,9 +6,10 @@ extend   = require 'extend'
 moment   = require 'moment'
 parser   = require 'body-parser'
 thus     = require 'thus'
-async    = require 'async'
 path     = require 'path'
 fs       = require 'fs'
+
+require 'colors'
 
 ###
 The following modules might be included depending on configuration:
@@ -80,7 +81,6 @@ class Platform
 	constructor: (@wd) ->
 		platform = @
 		ctx.cfg = require './config-defaults.litcoffee'
-		ctx.logs = path.join @wd, './logs/'
 		ctx.routes = undefined
 		ctx.models = undefined
 		ctx.middlewares = undefined
@@ -113,7 +113,7 @@ class Platform
 		platform
 
 	log: (ld) ->
-		ctx.logs = path.resolve @wd, ld
+		console.error 'platform-ng'.blue.bold + ' deprecated'.yellow.bold + ' Platform#log(...): logging is all on stdio now; use a log aggregator like pm2'
 		platform
 
 	serve: (srv) ->
@@ -129,7 +129,7 @@ class Platform
 		port = process.env.PORT ? cfg.server.port
 		node_env = process.env.NODE_ENV ? cfg.app.env
 
-		async.each [ctx.logs, serve_dir], fs.mkdir, ->
+		fs.mkdir serve_dir, ->
 			if node_env isnt 'production'
 				node_env = 'development'
 
@@ -205,125 +205,114 @@ class Platform
 					else
 						winston.error "Unknown session type #{cfg.app.session?.type}; sessions disabled"
 
-				app = @
-				async.waterfall [
-					do_models = (callback) ->
-						models = ctx.models
+				do_models = (callback) =>
+					models = ctx.models
 
-						if typeof models isnt 'function'
-							winston.warn 'no models detected, skipping'
-							models = (cfg, logger, env, cb) ->
-								cb()
-						else
-							winston.info 'setting up app-defined models'
-
-						models cfg, winston, node_env, (mdl) ->
-							compiled_models = mdl
-							models_ok = true
-							callback()
-					,
-					do_middlewares = (callback) ->
-						mws = ctx.middlewares
-
-						if typeof mws isnt 'function'
-							mws = (models, cfg, logger, env, cb) ->
-								cb()
-
-						mws compiled_models, cfg, winston, node_env, (mw) ->
-							if typeof mw is 'function'
-								mw = [mw]
-
-							if mw instanceof Array and mw.length > 0
-								mw_count = 0
-
-								for m in mw
-									if typeof m is 'function'
-										mw_count++
-										app.use m
-									else
-										winston.warn "middleware at index #{mw.indexOf(m)} is not a function"
-
-								winston.info "using #{mw_count} custom middleware#{if mw_count > 1 then 's' else ''}"
-
-							mws_ok = true
-							callback()
-					,
-					do_routes = (callback) ->
-						routes = ctx.routes
-
-						if typeof routes isnt 'function'
-							winston.warn 'no routes detected, skipping'
-							routes = (a, m, c, w, e, cb) ->
-								cb()
-						else
-							winston.info 'setting up app-defined routes'
-
-						routes app, compiled_models, cfg, winston, node_env, (r) ->
-							compiled_routes = r
-							routes_ok = true
-							callback()
-				], (err) ->
-					if err?
-						winston.error err
+					if typeof models isnt 'function'
+						winston.warn 'no models detected, skipping'
+						models = (cfg, logger, env, cb) ->
+							cb()
 					else
-						finish_setup()
+						winston.info 'setting up app-defined models'
 
-				finish_setup = do (app = @) ->
-					fn = ->
-						if cfg.server.method_override
-							@use express.methodOverride()
-							winston.info 'method override activated'
+					models cfg, winston, node_env, (mdl) ->
+						compiled_models = mdl
+						models_ok = true
+						callback()
 
-						@use @router
+				do_middlewares = (callback) =>
+					mws = ctx.middlewares
 
-						switch cfg.express['view engine']
-							when 'jade' then hidden_files.push 'jade'
+					if typeof mws isnt 'function'
+						mws = (models, cfg, logger, env, cb) ->
+							cb()
 
-						if ctx.sources?
-							if cfg.languages?.coffeescript?.enabled
-								hidden_files.push 'coffee'
-								coffeemw = require 'connect-coffee-script'
+					mws compiled_models, cfg, winston, node_env, (mw) =>
+						if typeof mw is 'function'
+							mw = [mw]
 
-								@use coffeemw
-									src: ctx.sources
-									dest: serve_dir
-									sourceMap: cfg.compile?.expose_sources
+						if mw instanceof Array and mw.length > 0
+							mw_count = 0
 
-							if cfg.languages?.stylus?.enabled
-								hidden_files.push 'styl'
-								stylus = require 'stylus'
-
-								@use stylus.middleware
-									src: ctx.sources
-									dest: serve_dir
-									compile: (str, path, fn) ->
-										s = stylus(str)
-											.set('filename', path)
-											.set('include css', cfg.languages?.stylus?.include_css)
-											.set('compress', cfg.compile?.minify)
-
-										if cfg.languages?.stylus?.nib
-											s.use require('nib')()
-
-						unless cfg.compile?.expose_sources
-							app.get /.+/, (req, res, next) ->
-								if req.path.split('.').pop() in hidden_files
-									res.send 404
+							for m in mw
+								if typeof m is 'function'
+									mw_count++
+									@use m
 								else
-									next()
+									winston.warn "middleware at index #{mw.indexOf(m)} is not a function"
 
-						@use express.static ctx.sources
-						@use express.static serve_dir
+							winston.info "using #{mw_count} custom middleware#{if mw_count > 1 then 's' else ''}"
 
-						start_time = new Date
-						@listen port
-						rtprint @, winston
+						mws_ok = true
+						callback()
 
-						winston.info "#{cfg.app.name} is running!"
-						winston.info "platform-ng is listening via express on port #{port}"
+				do_routes = (callback) =>
+					routes = ctx.routes
 
-					-> fn.call app
+					if typeof routes isnt 'function'
+						winston.warn 'no routes detected, skipping'
+						routes = (a, m, c, w, e, cb) ->
+							cb()
+					else
+						winston.info 'setting up app-defined routes'
 
+					routes @, compiled_models, cfg, winston, node_env, (r) ->
+						compiled_routes = r
+						routes_ok = true
+						callback()
+
+				finish_setup = =>
+					if cfg.server.method_override
+						@use express.methodOverride()
+						winston.info 'method override activated'
+
+					@use @router
+
+					switch cfg.express['view engine']
+						when 'jade' then hidden_files.push 'jade'
+
+					if ctx.sources?
+						if cfg.languages?.coffeescript?.enabled
+							hidden_files.push 'coffee'
+							coffeemw = require 'connect-coffee-script'
+
+							@use coffeemw
+								src: ctx.sources
+								dest: serve_dir
+								sourceMap: cfg.compile?.expose_sources
+
+						if cfg.languages?.stylus?.enabled
+							hidden_files.push 'styl'
+							stylus = require 'stylus'
+
+							@use stylus.middleware
+								src: ctx.sources
+								dest: serve_dir
+								compile: (str, path, fn) ->
+									s = stylus(str)
+										.set('filename', path)
+										.set('include css', cfg.languages?.stylus?.include_css)
+										.set('compress', cfg.compile?.minify)
+
+									if cfg.languages?.stylus?.nib
+										s.use require('nib')()
+
+					unless cfg.compile?.expose_sources
+						app.get /.+/, (req, res, next) ->
+							if req.path.split('.').pop() in hidden_files
+								res.send 404
+							else
+								next()
+
+					@use express.static ctx.sources
+					@use express.static serve_dir
+
+					start_time = new Date
+					@listen port
+					rtprint @, winston
+
+					winston.info "#{cfg.app.name} is running!"
+					winston.info "platform-ng is listening via express on port #{port}"
 
 				said_bye = false
 				exiter = (type) ->
@@ -340,6 +329,10 @@ class Platform
 								else
 									winston.error 'uncaught exception causing platform-ng to exit:'
 									winston.error if typeof error is 'string' then error else JSON.stringify(error, null, 4)
+
+									if console.trace?
+										console.trace error
+
 									code = codes.UNCAUGHT_EXCEPTION
 
 							else unless models_ok and routes_ok and mws_ok
@@ -383,3 +376,8 @@ class Platform
 				process.on 'exit', exiter('exit')
 				process.on 'SIGINT', exiter('SIGINT')
 				process.on 'uncaughtException', exiter('uncaughtException')
+
+				do_models ->
+					do_middlewares ->
+						do_routes ->
+							finish_setup()

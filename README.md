@@ -1,7 +1,7 @@
 platform-ng
 ===========
 
-Rapid, sane configuration of ExpressJS. 0.2.x will probably be the last minor series to use express 3.
+Rapid, sane configuration of ExpressJS. 0.x.x uses Express 3. 1.x.x will use Express 4, eventually.
 
 Platform-ng is pretty robust at this point, and there are a handful of known production uses across at least 3 organizations.
 
@@ -19,7 +19,6 @@ require('platform-ng')('./config.json')
 	.source('./src/')
 	.middleware('./middlewares/')
 	.view('./src/view/')
-	.log('./log/')
 	.serve();
 ```
 
@@ -32,96 +31,7 @@ Configuration (e.g. config.json)
 
 Either in a json file, or in something ```require```able. Just needs to be a JS object.
 
-You aren't truly required to pass in anything, really. The defaults are pretty sane. Here they are, with comments:
-
-```javascript
-{
-	"app": {
-
-		// must match /^[a-zA-Z0-9\-\.]$/
-		"name": "unnammed-app",
-
-		// 'development' or 'production'
-		"env": "development",
-
-		// you can disable using the "enabled" key below, or just set the whole
-		// "session" value to something falsy
-		"session": {
-			"enabled": true,
-
-			// cookie is the only supported type at the moment
-			"type": "cookie",
-
-			// you really should set this to some random, secure string
-			"secret": "change me"
-		},
-
-		// disable with "enabled": false or just set "cookies" to something
-		// falsy
-		"cookies": {
-			"enabled": true,
-
-			// you really should set this to some random, secure string
-			"secret": "change me"
-		},
-
-		// relative path to your favicon
-		// default is express's builtin
-		"favicon": "src/img/favicon.ico"
-	},
-
-	"server": {
-		"port": 8001,
-
-		// assume the node server is behind a reverse proxy?
-		// this affects the value of req.ip, req.protocol, etc
-		// it also affects how cookies are handled when set by proxy servers
-		"behind_proxy": false,
-
-		// parse document bodies passed to the server? JSON, multipart, etc
-		// will get parsed and req.body will be transformed into something
-		// more usable
-		"body_parser": true,
-
-		// allow POST requests to override the HTTP method by passing a field
-		// named "_method"
-		"method_override": false
-	},
-
-	"languages": {
-
-		// enable the coffeescript compiler for *.coffee source files
-		"coffeescript": true,
-
-		// enable the stylus middleware for *.styl source files
-		"stylus": {
-			// when true, insert @included css files in-line rather than
-			// outputting a css @import statement
-			"include_css": true,
-
-			// include the stylus nib library for cross-browser CSS3 mixins
-			"nib": true
-		}
-	},
-
-	"compile": {
-		// when a preprocessor or compiler offers the option, should compiled
-		// code be minified?
-		"minify": true,
-
-		// allow source files like .coffee, .styl, .jade, etc to be downloaded
-		// from the sources directory; also causes some compilers to generate
-		// source maps
-		"expose_sources": true
-	},
-
-	// any option that can be set with express().set(key, value) can be included
-	// in this hash
-	"express": {
-		"view engine": "jade"
-	}
-}
-```
+You aren't truly required to pass in anything, really. The defaults are pretty sane. Check out [config-defaults.litcoffee](config-defaults.litcoffee) for instructions.
 
 Data Models
 -----------
@@ -205,7 +115,7 @@ function routesFn(app, models, config, logger, nodeEnvironment, callback)
 
 The argument values will be as follows:
 
-* ```app``` - an Express-compatible API on which you should define your routes and middlewares, using ```.use()```, ```.param()```, any of the ```.VERB()``` functions, or ```.all()```. As of 0.1.0, you can use ```.namespace()``` as provided by the [express-namespace](https://github.com/visionmedia/express-namespace) module.
+* ```app``` - an Express-compatible API on which you should define your routes and middlewares, using ```.use()```, ```.param()```, any of the ```.VERB()``` functions, or ```.all()```. As of 0.1.0, you can use ```.namespace()``` as provided by the [express-namespace](https://github.com/visionmedia/express-namespace) module. As of 0.5.0, ```.namespace()``` requires the ```optionalDependencies``` be installed.
 * ```models``` - Your models object, the result of calling your models function as described in the **Data Models** section
 * ```config``` - the platform-ng configuration
 * ```logger``` - a logger providing ```.info(msg)```, ```.warn(msg)```,
