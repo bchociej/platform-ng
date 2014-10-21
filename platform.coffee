@@ -47,6 +47,32 @@ maybe_require = (wd, what) ->
 	else
 		require path.resolve(wd, what)
 
+decolorize_stream = ->
+	through (d) ->
+		if typeof d is 'string'
+			try
+				d = JSON.parse d
+			catch e
+				undefined
+
+		if Array.isArray(d)
+			out = d.map((x) -> x.toString().stripColors).toString()
+		else if typeof d is 'object'
+			out = {}
+			for own k, v of d
+				out[k] = v.toString().stripColors
+
+			out = JSON.stringify out
+		else
+			out = d
+		
+		out = out.toString().stripColors
+
+		unless out.lastIndexOf('\n') is out.length - 1
+			out += '\n'
+
+		@queue out
+
 class Platform
 	platform = undefined
 	ctx = {}
@@ -116,43 +142,18 @@ class Platform
 
 				@locals.pretty = not cfg.compile?.minify
 
+				@use express.logger()
+
+				if @get('env') is 'production'
+					winston.remove winston.transports.Console
+
+					grey_stdout = decolorize_stream()
+					grey_stdout.pipe process.stdout
+					winston.add winston.transports.File, {stream: grey_stdout}
+
 				@use express.compress() if cfg.server.compress
 				@use express.favicon() unless cfg.app.favicon?
 				@use express.favicon(path.join(wd, cfg.app.favicon)) if cfg.app.favicon?
-
-				winston.add winston.transports.File,
-					stream: (through (d) -> @queue(d.toString().stripColors)).pipe(fs.createWriteStream(path.join(ctx.logs, 'app.log')))
-
-				switch @get 'env'
-					when 'development'
-						winston.info 'env = development'
-
-						greystream = through (d) ->
-							d = d.toString().stripColors
-							d = d.split ' '
-
-							d[0] = d[0].green
-							d[1] = d[1].cyan
-
-							d[2] = d[2].white.bold.redBG unless 200 <= parseInt(d[2]) < 300
-
-							d = d.join ' '
-
-							@queue d
-
-						greystream.pipe process.stdout
-
-						@use express.errorHandler()
-						@use express.logger
-							format: 'tiny'
-							stream: greystream
-
-					when 'production'
-						winston.remove winston.transports.Console
-
-				@use express.logger
-					format: 'default'
-					stream: (through (d) -> @queue(d.toString().stripColors)).pipe(fs.createWriteStream(path.join(ctx.logs, 'express.log')))
 
 				compiled_models = compiled_routes = undefined
 				models_ok = mws_ok = routes_ok = false
