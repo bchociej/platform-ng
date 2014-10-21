@@ -33,6 +33,7 @@ ID to the client.
 `cookie` is default for now, but `vanilla` will replace it in the next major version. The `secure` option
 determines whether the cookies are HTTPS-only or not.
 
+		#app:
 			session:
 				enabled: true
 				type: 'cookie'
@@ -47,6 +48,7 @@ The cookie parser transforms the `cookie` header into `request.cookies`, `reques
 verify signed cookies, and, if you set `{signed: true}` in the third argument to `response.cookie(...)`,
 this `secret` will be used to sign the outbound cookies too.
 
+		#app:
 			cookies:
 				enabled: true
 				secret: 'change-me'
