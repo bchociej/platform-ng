@@ -330,8 +330,8 @@ class Platform
 									winston.error 'uncaught exception causing platform-ng to exit:'
 									winston.error if typeof error is 'string' then error else JSON.stringify(error, null, 4)
 
-									if console.trace?
-										console.trace error
+									if error.stack?
+										winston.error error.stack
 
 									code = codes.UNCAUGHT_EXCEPTION
 
